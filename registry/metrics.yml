@@ -1,0 +1,120 @@
+# ---------------------------------------------------------------------------
+# KPI REGISTRY
+#
+# Every business metric this company reports is DEFINED ONCE, here, as SQL
+# against the gold layer. Dashboards, exports, and the AI retrieval layer all
+# read from this file. Nobody hand-writes a metric in a dashboard or lets a
+# model invent a number -- if a metric is not in this registry, it does not
+# exist. This is what keeps "revenue" meaning the same thing everywhere.
+#
+# Each metric declares:
+#   label / description / unit  -> human + catalog metadata
+#   sql                         -> a template over gold.*, computing one column `value`
+#   filters                     -> dimension name -> the column it maps to
+#                                  (used for both WHERE filtering and `by` breakdowns)
+#
+# The template may contain three placeholders the runner fills safely:
+#   {dims}      selected breakdown columns (when --by is used)
+#   {where}     a WHERE clause built from --filter options
+#   {group_by}  a GROUP BY clause (when --by is used)
+# ---------------------------------------------------------------------------
+version: 1
+
+metrics:
+
+  total_revenue:
+    label: Total Revenue
+    description: Net revenue across retail and service, after discounts.
+    unit: usd
+    filters:
+      channel: channel
+      store: store_name
+      month: sale_month
+      sale_type: sale_type
+    sql: |
+      select {dims} round(sum(net_revenue), 2) as value
+      from gold.fct_sales
+      {where}
+      {group_by}
+
+  sales_count:
+    label: Sales Count
+    description: Number of reconciled sales (retail orders + completed service jobs).
+    unit: count
+    filters:
+      channel: channel
+      store: store_name
+      month: sale_month
+      sale_type: sale_type
+    sql: |
+      select {dims} count(*) as value
+      from gold.fct_sales
+      {where}
+      {group_by}
+
+  average_ticket:
+    label: Average Ticket
+    description: Average net revenue per sale.
+    unit: usd
+    filters:
+      channel: channel
+      store: store_name
+      month: sale_month
+      sale_type: sale_type
+    sql: |
+      select {dims} round(avg(net_revenue), 2) as value
+      from gold.fct_sales
+      {where}
+      {group_by}
+
+  gross_margin:
+    label: Gross Margin
+    description: Net revenue less direct cost (COGS or parts), before labor and overhead.
+    unit: usd
+    filters:
+      channel: channel
+      store: store_name
+      month: sale_month
+      sale_type: sale_type
+    sql: |
+      select {dims} round(sum(gross_margin), 2) as value
+      from gold.fct_sales
+      {where}
+      {group_by}
+
+  media_cost_per_sale:
+    label: Media Cost per Sale
+    description: Marketing spend divided by sales, by channel (media only, no labor or overhead).
+    unit: usd
+    filters:
+      channel: channel
+    sql: |
+      select {dims} round(sum(media_cost) / sum(sales_count), 2) as value
+      from gold.mart_channel_performance
+      {where}
+      {group_by}
+
+  burdened_cost_per_sale:
+    label: Burdened Cost per Sale
+    description: Fully-loaded cost per sale (media + burdened labor + allocated overhead), by channel.
+    unit: usd
+    filters:
+      channel: channel
+    sql: |
+      select {dims}
+        round((sum(media_cost) + sum(labor_cost) + sum(overhead_alloc)) / sum(sales_count), 2) as value
+      from gold.mart_channel_performance
+      {where}
+      {group_by}
+
+  lead_to_sale_rate:
+    label: Lead-to-Sale Rate
+    description: Won leads as a percentage of all leads.
+    unit: percent
+    filters:
+      channel: channel
+    sql: |
+      select {dims} round(sum(won_leads) * 100.0 / nullif(sum(leads), 0), 1) as value
+      from gold.mart_channel_performance
+      {where}
+      {group_by}

@@ -1,0 +1,40 @@
+version: 2
+
+models:
+  - name: fct_sales
+    description: One row per reconciled sale (retail + service), with burdened labor cost.
+    columns:
+      - name: sale_id
+        description: Surrogate sale key, unique across both source systems.
+        data_tests:
+          - unique
+          - not_null
+      - name: channel
+        description: Conformed marketing channel.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["paid_search", "paid_social", "email", "organic_search", "referral", "walk_in", "unknown"]
+      - name: net_revenue
+        data_tests:
+          - not_null
+
+  - name: mart_channel_performance
+    description: Per-channel attribution rollup with media vs burdened cost per sale.
+    columns:
+      - name: channel
+        data_tests:
+          - unique
+          - not_null
+      - name: burdened_cost_per_sale
+        description: Burdened cost per sale; must never be below media-only cost.
+        data_tests:
+          - not_null
+
+  - name: dim_channel
+    columns:
+      - name: channel
+        data_tests:
+          - unique
+          - not_null

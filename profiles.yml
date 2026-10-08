@@ -1,0 +1,11 @@
+# dbt profile for the reference lakehouse.
+# Everything is local: a single DuckDB file in the project root. No cloud, no
+# credentials, no network. Run dbt with:  dbt build --profiles-dir .
+reference_lakehouse:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: "warehouse.duckdb"
+      threads: 4
+      schema: main

@@ -1,0 +1,15 @@
+# Python / venv
+.venv/
+__pycache__/
+*.pyc
+
+# generated synthetic data (reproducible from generate_data.py)
+data/raw/*.csv
+
+# dbt + duckdb build artifacts
+target/
+dbt_packages/
+logs/
+.user.yml
+*.duckdb
+*.duckdb.wal

@@ -1,0 +1,28 @@
+name: reference_lakehouse
+version: "1.0.0"
+config-version: 2
+
+profile: reference_lakehouse
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+# data/raw holds the generated synthetic CSVs read by the bronze layer.
+vars:
+  raw_dir: "data/raw"
+  labor_loaded_rate: 48.00   # fully-burdened shop labor cost per hour (not the billed rate)
+  period_overhead: 180000.00 # total fixed overhead to allocate across channels for the period
+
+models:
+  reference_lakehouse:
+    bronze:
+      +schema: bronze
+      +materialized: view
+    silver:
+      +schema: silver
+      +materialized: view
+    gold:
+      +schema: gold
+      +materialized: table
