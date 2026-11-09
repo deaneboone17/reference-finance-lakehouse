@@ -1,5 +1,5 @@
 -- Gold: the attribution rollup, one row per marketing channel for the whole
--- period. This is the headline mart -- it answers "what does a sale from this
+-- period. This is the headline mart: it answers "what does a sale from this
 -- channel actually cost us, once everything is loaded in?"
 --
 --   media_cost_per_sale     = media spend / sales            (the number most people stop at)

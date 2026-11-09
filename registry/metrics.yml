@@ -4,7 +4,7 @@
 # Every business metric this company reports is DEFINED ONCE, here, as SQL
 # against the gold layer. Dashboards, exports, and the AI retrieval layer all
 # read from this file. Nobody hand-writes a metric in a dashboard or lets a
-# model invent a number -- if a metric is not in this registry, it does not
+# model invent a number. If a metric is not in this registry, it does not
 # exist. This is what keeps "revenue" meaning the same thing everywhere.
 #
 # Each metric declares:

@@ -81,7 +81,7 @@ that **retrieves governed metrics instead of calculating its own**.
 ## Layout
 
 ```
-reference-lakehouse/
+reference-finance-lakehouse/
 ├── generate_data.py           # deterministic synthetic data generator (4 source CSVs)
 ├── dbt_project.yml            # dbt config + business vars (loaded labor rate, overhead)
 ├── profiles.yml               # local DuckDB profile (one file, no cloud)
@@ -100,6 +100,7 @@ reference-lakehouse/
 │   ├── planner.py             # catalog, plan validator, stub planner, LLM planner + retry
 │   ├── vertex.py              # optional Gemini-on-Vertex model client
 │   └── tests/                 # offline unit tests (fake model client, no network)
+├── requirements.txt           # pinned duckdb, dbt-core, dbt-duckdb, PyYAML
 ├── requirements-llm.txt       # optional extra for the Vertex planner
 └── run.sh                     # the whole pipeline, end to end
 ```
@@ -265,4 +266,4 @@ A provider is any object with `name` and
 ---
 
 *Synthetic data only. Meridian Cycle Co. is fictional; any resemblance to a
-real business is coincidental.*
+real business is coincidental. MIT licensed; see [LICENSE](LICENSE).*
