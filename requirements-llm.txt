@@ -1,0 +1,3 @@
+# Optional: only needed for the Vertex AI planner (ai_query/ask.py --planner vertex).
+# Install on top of the base requirements:  pip install -r requirements-llm.txt
+google-genai==3.0.0

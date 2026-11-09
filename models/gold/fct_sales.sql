@@ -1,7 +1,7 @@
 -- Gold: the sales fact, one row per sale, enriched with fully-burdened labor
 -- cost. labor_cost uses the loaded shop rate (wages + taxes + benefits +
 -- idle time), which is deliberately different from the rate billed to the
--- customer -- that gap is the whole point of "burdened" economics.
+-- customer. That gap is the whole point of "burdened" economics.
 select
     sale_id,
     sale_type,

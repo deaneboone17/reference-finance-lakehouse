@@ -3,7 +3,7 @@
 KPI registry engine.
 
 Loads metrics.yml and computes a registry-defined metric by running its SQL
-against the DuckDB warehouse. The metric math lives in SQL, in the registry --
+against the DuckDB warehouse. The metric math lives in SQL, in the registry;
 this module only compiles filters and breakdowns into the template and
 executes it. Nothing here invents or adjusts a number.
 
@@ -19,6 +19,7 @@ import argparse
 import os
 import re
 import sys
+from decimal import Decimal
 
 import duckdb
 import yaml
@@ -32,6 +33,21 @@ METRICS_PATH = os.path.join(HERE, "metrics.yml")
 # identifiers/dates are rejected rather than interpolated, which keeps this a
 # safe retrieval surface even when a model is choosing the inputs.
 _SAFE_VALUE = re.compile(r"^[A-Za-z0-9_\- ]+$")
+
+
+def format_value(value) -> str:
+    """Numbers with thousands separators: money-like values to 2 places.
+
+    DuckDB returns DECIMAL columns (revenue, margin) as Decimal and computed
+    ratios as float, so both are formatted the same way.
+    """
+    if isinstance(value, bool) or value is None:
+        return str(value)
+    if isinstance(value, (float, Decimal)):
+        return f"{value:,.2f}"
+    if isinstance(value, int):
+        return f"{value:,}"
+    return str(value)
 
 
 def load_registry() -> dict:
@@ -84,8 +100,9 @@ def run_metric(metric_id: str, filters: dict | None = None, by: str | None = Non
         raise FileNotFoundError(f"warehouse not built yet: {DB_PATH}. Run the generator and dbt build first.")
     con = duckdb.connect(DB_PATH, read_only=True)
     try:
-        cols = [d[0] for d in con.execute(sql).description]
-        rows = con.execute(sql).fetchall()
+        result = con.execute(sql)
+        cols = [d[0] for d in result.description]
+        rows = result.fetchall()
     finally:
         con.close()
     return sql, cols, rows
@@ -100,7 +117,7 @@ def _print_catalog(registry: dict) -> None:
         print(f"  {'':<24} dimensions: {dims}\n")
 
 
-def main() -> int:
+def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Compute a KPI-registry metric from the warehouse.")
     ap.add_argument("metric", nargs="?", help="metric id (see --list)")
     ap.add_argument("--list", action="store_true", help="list the metric catalog")
@@ -108,7 +125,7 @@ def main() -> int:
     ap.add_argument("--filter", action="append", default=[], metavar="dim=value",
                     help="filter on a dimension; repeatable")
     ap.add_argument("--show-sql", action="store_true", help="print the compiled SQL")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     registry = load_registry()
     if args.list or not args.metric:
@@ -123,7 +140,12 @@ def main() -> int:
         k, v = f.split("=", 1)
         filters[k.strip()] = v.strip()
 
-    sql, cols, rows = run_metric(args.metric, filters, args.by)
+    # Unknown metric, filter or breakdown: say what is allowed, exit 2, no traceback.
+    try:
+        sql, cols, rows = run_metric(args.metric, filters, args.by)
+    except (KeyError, ValueError) as e:
+        print(e.args[0] if e.args else str(e), file=sys.stderr)
+        return 2
     m = registry["metrics"][args.metric]
 
     if args.show_sql:
@@ -134,14 +156,10 @@ def main() -> int:
     if args.by:
         width = max((len(str(r[0])) for r in rows), default=8)
         for r in rows:
-            print(f"  {str(r[0]):<{width}}  {r[1]:>14,.2f}" if isinstance(r[1], float)
-                  else f"  {str(r[0]):<{width}}  {r[1]:>14}")
+            print(f"  {str(r[0]):<{width}}  {format_value(r[1]):>14}")
     else:
         val = rows[0][0] if rows else None
-        if isinstance(val, float):
-            print(f"  {val:,.2f}")
-        else:
-            print(f"  {val}")
+        print(f"  {format_value(val)}")
     return 0
 
 

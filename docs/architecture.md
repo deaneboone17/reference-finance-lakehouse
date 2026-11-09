@@ -20,7 +20,7 @@
       ├────────────▶ registry/metrics.yml  (KPI definitions, SQL over gold.*)
       │                      │
       │                      ├──▶ registry/query.py  (CLI / library)
-      │                      └──▶ ai_query/ask.py     (NL → plan → registry SQL)
+      │                      └──▶ ai_query/ask.py     (NL → plan → validate → registry SQL)
 ```
 
 ## Model inventory
@@ -41,19 +41,24 @@
 
 ## Key business rules (and where they live)
 
-- **Channel conforming** — `macros/conform_channel.sql`. One place maps every
+- **Channel conforming**: `macros/conform_channel.sql`. One place maps every
   raw spelling to a canonical channel.
-- **What counts as a sale** — `models/silver/sv_sales.sql`. Retail orders plus
+- **What counts as a sale**: `models/silver/sv_sales.sql`. Retail orders plus
   *completed* service jobs; cancelled jobs are excluded; sales are deduped by
   key so a replayed extract can't double-count.
-- **Burdened labor cost** — `fct_sales.labor_cost = labor_hours ×
+- **Burdened labor cost**: `fct_sales.labor_cost = labor_hours ×
   labor_loaded_rate` (var in `dbt_project.yml`). The loaded rate is the true
   cost to the business, deliberately higher than the rate billed to the
   customer.
-- **Overhead allocation** — `mart_channel_performance`. A fixed period
+- **Overhead allocation**: `mart_channel_performance`. A fixed period
   overhead (`period_overhead` var) is spread across channels pro-rata by share
-  of sales.
-- **Invariant guard** — `tests/assert_burdened_ge_media.sql`. Burdened cost
+  of sales count, so every channel carries the same overhead per sale. With
+  labor per sale also similar across channels in the synthetic data,
+  burdening adds about the same amount to each channel and does not change
+  their ranking. A real driver (labor hours, revenue) would make the
+  allocation follow actual cost; swapping the driver is a small change in
+  the mart.
+- **Invariant guard**: `tests/assert_burdened_ge_media.sql`. Burdened cost
   per sale can never fall below media-only cost per sale; dbt fails the build
   if it ever does.
 
@@ -62,4 +67,4 @@
 DuckDB makes the whole warehouse a single local file and needs no server, so
 the reference implementation is genuinely clone-and-run. The same dbt models
 and the same KPI registry port directly to a columnar cloud warehouse by
-changing only the dbt profile — the modeling pattern is the transferable part.
+changing only the dbt profile. The modeling pattern is the transferable part.
