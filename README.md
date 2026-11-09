@@ -192,7 +192,12 @@ There are two planners.
 | `vertex` | Gemini on Vertex AI                | `requirements-llm.txt`, a GCP project, ADC |
 
 The stub is good enough for the demo and for CI. It cannot say "I don't know":
-an unmatched question gets total revenue. The model can.
+an unmatched question gets total revenue. The model can. The stub is a keyword
+stand-in for offline runs and can miss constraints the model would keep. It
+reads channel, store, sale type (`service`, `retail`) and a month (`2025-06`
+or `June 2025`); when it recognizes a constraint the plan cannot express (a
+store, month or sale type on a channel-only metric, or a bare year), `ask.py`
+prints it on an `ignored` line instead of dropping it silently.
 
 ### Running with a real model
 

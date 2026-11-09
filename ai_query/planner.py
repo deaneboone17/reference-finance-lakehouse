@@ -163,15 +163,46 @@ METRIC_RULES = [
     (("revenue", "sales", "top line", "turnover"), "total_revenue"),
 ]
 
+SALE_TYPE_WORDS = {"service": r"\bservices?\b", "retail": r"\bretail\b"}
+
+MONTHS = {
+    "jan": 1, "january": 1, "feb": 2, "february": 2, "mar": 3, "march": 3,
+    "apr": 4, "april": 4, "may": 5, "jun": 6, "june": 6, "jul": 7, "july": 7,
+    "aug": 8, "august": 8, "sep": 9, "sept": 9, "september": 9, "oct": 10, "october": 10,
+    "nov": 11, "november": 11, "dec": 12, "december": 12,
+}
+# A month name only counts when a four-digit year follows it ("June 2025",
+# "jun. 2025", "june, 2025"). A bare month name is ambiguous and is ignored.
+_MONTH_NAME_YEAR = re.compile(r"\b(" + "|".join(sorted(MONTHS, key=len, reverse=True)) +
+                              r")\.?,?\s+(20\d{2})\b")
+_ISO_MONTH = re.compile(r"\b(20\d{2})-(0[1-9]|1[0-2])\b")
+_YEAR = re.compile(r"\b20\d{2}\b")
+
 # metrics sourced from the per-channel mart only support a channel breakdown
 _MART_ONLY = {"media_cost_per_sale", "burdened_cost_per_sale", "lead_to_sale_rate"}
 
 
-def plan_from_question(question: str) -> dict:
-    """Keyword stub: map a question to a plan with fixed rules.
+def parse_month(q: str) -> str | None:
+    """'2025-06', 'June 2025' or 'jun 2025' -> '2025-06'. Anything else -> None."""
+    m = _ISO_MONTH.search(q)
+    if m:
+        return m.group(0)
+    m = _MONTH_NAME_YEAR.search(q.lower())
+    if m:
+        return f"{m.group(2)}-{MONTHS[m.group(1)]:02d}"
+    return None
+
+
+def stub_plan(question: str) -> tuple[dict, dict]:
+    """Keyword stub: map a question to (plan, ignored) with fixed rules.
+
+    `ignored` lists constraints the stub recognized in the question but could
+    not put in the plan (a store, month or sale type on a channel-only metric,
+    or a bare year), so the caller can say so instead of dropping them
+    silently. Constraints the keyword rules do not recognize at all cannot be
+    listed; that is the stub's real limit and why the LLM planner exists.
 
     It never says "unanswerable": an unmatched question gets total_revenue.
-    That is fine for an offline demo and is exactly why the LLM planner exists.
     """
     q = question.lower()
 
@@ -179,6 +210,7 @@ def plan_from_question(question: str) -> dict:
                   "total_revenue")
 
     filters: dict[str, str] = {}
+    ignored: dict[str, str] = {}
     for word, canonical in CHANNEL_WORDS.items():
         if word in q:
             filters["channel"] = canonical
@@ -187,9 +219,18 @@ def plan_from_question(question: str) -> dict:
         if word in q:
             filters["store"] = canonical
             break
-    m = re.search(r"\b(20\d{2})-(0[1-9]|1[0-2])\b", q)
-    if m:
-        filters["month"] = m.group(0)
+    # One sale type named is a filter; both named ("retail vs service") is a split.
+    sale_types = [st for st, pat in SALE_TYPE_WORDS.items() if re.search(pat, q)]
+    if len(sale_types) == 1:
+        filters["sale_type"] = sale_types[0]
+    month = parse_month(q)
+    if month:
+        filters["month"] = month
+    else:
+        year = _YEAR.search(q)
+        if year:
+            # The registry has months, not years, so a bare year cannot be a filter.
+            ignored["year"] = year.group(0)
 
     by = None
     if "by channel" in q or "per channel" in q or "each channel" in q:
@@ -198,21 +239,35 @@ def plan_from_question(question: str) -> dict:
         by = "store"
     elif "by month" in q or "monthly" in q or "over time" in q:
         by = "month"
+    elif "by sale type" in q or "by type" in q or len(sale_types) == 2:
+        by = "sale_type"
 
     if metric in _MART_ONLY:
-        filters.pop("store", None)
-        filters.pop("month", None)
-        if by in ("store", "month"):
+        for dim in ("store", "month", "sale_type"):
+            if dim in filters:
+                ignored[dim] = filters.pop(dim)
+        if by in ("store", "month", "sale_type"):
+            ignored["by"] = by
             by = "channel"
 
-    return {"metric": metric, "filters": filters, "by": by}
+    return {"metric": metric, "filters": filters, "by": by}, ignored
+
+
+def plan_from_question(question: str) -> dict:
+    """Keyword stub: the plan only (see stub_plan for what it ignored)."""
+    return stub_plan(question)[0]
 
 
 class StubPlanner:
     name = "stub"
 
+    def __init__(self):
+        # constraints recognized but left out of the last plan (see stub_plan)
+        self.ignored: dict[str, str] = {}
+
     def plan(self, question: str) -> dict:
-        return plan_from_question(question)
+        plan, self.ignored = stub_plan(question)
+        return plan
 
 
 # ---------------------------------------------------------------------------

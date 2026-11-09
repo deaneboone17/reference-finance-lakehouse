@@ -53,6 +53,7 @@ def answer(question: str, planner, registry: dict) -> dict:
     plan = require_valid(planner.plan(question), registry)
     sql, cols, rows = query.run_metric(plan["metric"], plan["filters"], plan["by"])
     return {"question": question, "planner": planner.name, "plan": plan,
+            "ignored": dict(getattr(planner, "ignored", {}) or {}),
             "sql": sql, "columns": cols, "rows": rows}
 
 
@@ -64,6 +65,9 @@ def print_answer(res: dict, registry: dict) -> None:
     print(f'   metric  = {plan["metric"]}  ("{m["label"]}")')
     print(f'   filters = {plan["filters"] or "{}"}')
     print(f'   by      = {plan["by"]}')
+    if res.get("ignored"):
+        dropped = ", ".join(f"{k}={v}" for k, v in res["ignored"].items())
+        print(f'   ignored = {dropped}  (stated in the question, but the plan cannot express it)')
     print('Computed in SQL by the registry over gold.*:')
     if plan["by"]:
         width = max((len(str(r[0])) for r in rows), default=8)
@@ -108,6 +112,7 @@ def main(argv=None) -> int:
 
     if args.json:
         out = {"question": res["question"], "planner": res["planner"], "plan": res["plan"],
+               "ignored": res["ignored"],
                "result": [dict(zip(res["columns"], r)) for r in res["rows"]]}
         print(json.dumps(out, default=str, indent=2))
     else:

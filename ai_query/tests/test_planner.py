@@ -17,7 +17,7 @@ import yaml
 from ai_query import ask
 from ai_query.planner import (
     LLMPlanner, PlanError, StubPlanner, UnanswerableQuestion,
-    build_catalog, plan_from_question, plan_schema, validate_plan,
+    build_catalog, plan_from_question, plan_schema, stub_plan, validate_plan,
 )
 from registry import query
 
@@ -118,6 +118,63 @@ class StubPlannerTests(unittest.TestCase):
         for q in questions:
             with self.subTest(q=q):
                 self.assertEqual(validate_plan(StubPlanner().plan(q), REGISTRY), [])
+
+    def test_sale_type_is_parsed(self):
+        self.assertEqual(plan_from_question("average ticket for service jobs at oakmont")["filters"],
+                         {"store": "Oakmont", "sale_type": "service"})
+        self.assertEqual(plan_from_question("retail revenue by store"),
+                         {"metric": "total_revenue", "filters": {"sale_type": "retail"}, "by": "store"})
+        # both named is a comparison, not a filter
+        self.assertEqual(plan_from_question("revenue retail vs service"),
+                         {"metric": "total_revenue", "filters": {}, "by": "sale_type"})
+
+    def test_month_names_with_year(self):
+        cases = {
+            "average ticket for service jobs at Oakmont in June 2025": "2025-06",
+            "revenue in jun 2025": "2025-06",
+            "gross margin for Sept. 2024": "2024-09",
+            "sales count, december, 2025": "2025-12",
+            "revenue in 2025-03": "2025-03",
+        }
+        for q, month in cases.items():
+            with self.subTest(q=q):
+                self.assertEqual(plan_from_question(q)["filters"].get("month"), month)
+
+    def test_bare_month_or_year_is_not_a_filter(self):
+        plan, ignored = stub_plan("revenue in june")
+        self.assertNotIn("month", plan["filters"])
+        self.assertEqual(ignored, {})
+        plan, ignored = stub_plan("total revenue in 2025")
+        self.assertNotIn("month", plan["filters"])
+        self.assertEqual(ignored, {"year": "2025"})
+
+    def test_readme_example_keeps_every_constraint(self):
+        self.assertEqual(plan_from_question("average ticket for service jobs at Oakmont in June 2025"),
+                         {"metric": "average_ticket",
+                          "filters": {"store": "Oakmont", "sale_type": "service", "month": "2025-06"},
+                          "by": None})
+
+    def test_channel_only_metric_reports_what_it_drops(self):
+        planner = StubPlanner()
+        plan = planner.plan("burdened cost per sale for service at oakmont in june 2025 by store")
+        self.assertEqual(plan, {"metric": "burdened_cost_per_sale", "filters": {}, "by": "channel"})
+        self.assertEqual(planner.ignored, {"store": "Oakmont", "sale_type": "service",
+                                           "month": "2025-06", "by": "store"})
+        self.assertEqual(validate_plan(plan, REGISTRY), [])
+
+    def test_nothing_ignored_when_plan_keeps_everything(self):
+        planner = StubPlanner()
+        planner.plan("retail revenue at riverside in 2025-06")
+        self.assertEqual(planner.ignored, {})
+
+    def test_ignored_constraints_are_printed(self):
+        res = {"question": "q", "planner": "stub",
+               "plan": {"metric": "media_cost_per_sale", "filters": {}, "by": "channel"},
+               "ignored": {"store": "Oakmont"}, "rows": [("email", 36.86)]}
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            ask.print_answer(res, REGISTRY)
+        self.assertIn("ignored = store=Oakmont", out.getvalue())
 
 
 class LLMPlannerTests(unittest.TestCase):
