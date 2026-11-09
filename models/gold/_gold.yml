@@ -16,6 +16,18 @@ models:
           - accepted_values:
               arguments:
                 values: ["paid_search", "paid_social", "email", "organic_search", "referral", "walk_in", "unknown"]
+      - name: store_name
+        description: Store location. Must match the store values in registry/metrics.yml.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["Riverside", "Highland Park", "Oakmont", "Lakeside"]
+      - name: sale_type
+        description: retail or service. Must match the sale_type values in registry/metrics.yml.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ["retail", "service"]
       - name: net_revenue
         data_tests:
           - not_null

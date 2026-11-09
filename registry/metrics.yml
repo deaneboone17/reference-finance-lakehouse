@@ -20,6 +20,26 @@
 # ---------------------------------------------------------------------------
 version: 1
 
+# Allowed values for each dimension. The registry engine maps a dimension to a
+# column; this block says which values are legal. The AI layer may only choose
+# values listed here, and the plan validator rejects anything else before any
+# SQL runs. The synthetic data covers 2024-01 through 2025-12.
+dimensions:
+  channel:
+    description: Conformed marketing channel.
+    values: [paid_search, paid_social, email, organic_search, referral, walk_in]
+  store:
+    description: Store location.
+    values: [Riverside, Highland Park, Oakmont, Lakeside]
+  sale_type:
+    description: Retail order or completed service job.
+    values: [retail, service]
+  month:
+    description: Calendar month as YYYY-MM, for example 2025-06 for June 2025.
+    pattern: "^[0-9]{4}-(0[1-9]|1[0-2])$"
+    min: "2024-01"
+    max: "2025-12"
+
 metrics:
 
   total_revenue:
