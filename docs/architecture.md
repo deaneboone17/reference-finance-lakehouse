@@ -52,7 +52,12 @@
   customer.
 - **Overhead allocation**: `mart_channel_performance`. A fixed period
   overhead (`period_overhead` var) is spread across channels pro-rata by share
-  of sales.
+  of sales count, so every channel carries the same overhead per sale. With
+  labor per sale also similar across channels in the synthetic data,
+  burdening adds about the same amount to each channel and does not change
+  their ranking. A real driver (labor hours, revenue) would make the
+  allocation follow actual cost; swapping the driver is a small change in
+  the mart.
 - **Invariant guard**: `tests/assert_burdened_ge_media.sql`. Burdened cost
   per sale can never fall below media-only cost per sale; dbt fails the build
   if it ever does.

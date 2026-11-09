@@ -70,9 +70,13 @@ that **retrieves governed metrics instead of calculating its own**.
 5. **Costs are burdened, not just media.** The attribution mart separates
    *media cost per sale* (ad spend ÷ sales) from *burdened cost per sale*
    (media **plus** fully-loaded labor **plus** allocated overhead ÷ sales).
-   A channel with zero ad spend is not free: it still consumes shop labor and
-   a share of fixed overhead. Burdening is what makes channels comparable on a
-   true-cost basis.
+   The point is that a channel with zero ad spend is not free: here each of
+   its sales still carries about $40 of shop labor and overhead. In this
+   synthetic data that load is close to flat across channels, because
+   overhead is allocated by share of sales count and labor per sale is
+   similar everywhere, so burdening does not change the channel ranking.
+   Allocating overhead by a real cost driver (labor hours, revenue) would
+   make each channel's load follow its actual cost.
 
 ## Layout
 
@@ -141,22 +145,34 @@ python ai_query/ask.py "what was total revenue from paid search"
 
 ## What the attribution mart shows
 
-Running against the generated data, `mart_channel_performance` makes the
-media-vs-burdened gap obvious. A paid channel can look cheap on media alone yet
-cost far more once labor and overhead are loaded in; a zero-media channel is
-never actually free:
+Running against the generated data, `mart_channel_performance` produces
+these figures (reproducible from the fixed seed):
 
 | channel        | media cost/sale | burdened cost/sale |
 |----------------|----------------:|-------------------:|
-| paid_social    |          ~$85   |             ~$126  |
-| paid_search    |          ~$82   |             ~$123  |
-| email          |          ~$37   |              ~$77  |
-| referral       |           $0    |              ~$42  |
-| organic_search |           $0    |              ~$40  |
-| walk_in        |           $0    |              ~$40  |
+| paid_social    |          $84.91 |            $125.67 |
+| paid_search    |          $82.21 |            $123.06 |
+| email          |          $36.86 |             $77.08 |
+| referral       |           $0.00 |             $42.26 |
+| organic_search |           $0.00 |             $40.40 |
+| walk_in        |           $0.00 |             $40.17 |
 
-(Exact figures are reproducible from the fixed seed; this is the shape of the
-result.)
+What this shows, and what it does not:
+
+- **A zero-media channel is not free.** Referral, organic search and walk-in
+  cost nothing in media, but each of their sales still carries about $40 of
+  labor and overhead.
+- **Burdening does not reorder the channels here.** It adds roughly the same
+  $40 to every channel. Overhead is allocated by share of sales count, so
+  every channel gets the same $19.42 per sale, and labor runs about $21 per
+  sale in every channel ($20.74 to $22.83). The paid channels keep their
+  media-cost order, and the three zero-media channels land within about $2
+  of each other.
+- **That flatness comes from the allocation driver.** A sales-count split is
+  the simplest driver, not the most accurate one. Allocating overhead by a
+  real driver, such as labor hours or revenue, makes each channel's share
+  follow its actual cost; where channels differ on that driver, the burdened
+  view can rank them differently from media alone.
 
 ## The AI retrieval layer
 

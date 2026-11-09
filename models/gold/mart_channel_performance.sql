@@ -44,7 +44,8 @@ select
     round(s.revenue, 2)                                             as revenue,
     coalesce(round(m.media_cost, 2), 0.00)                          as media_cost,
     round(s.labor_cost, 2)                                          as labor_cost,
-    -- fixed overhead allocated pro-rata by share of total sales
+    -- fixed overhead allocated pro-rata by share of total sales. Sales count is
+    -- the simplest driver: it gives every channel the same overhead per sale.
     round({{ var('period_overhead') }} * s.sales_count / t.all_sales, 2) as overhead_alloc,
     round(coalesce(m.media_cost, 0) / s.sales_count, 2)             as media_cost_per_sale,
     round(
