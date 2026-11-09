@@ -72,12 +72,10 @@ def print_answer(res: dict, registry: dict) -> None:
     if plan["by"]:
         width = max((len(str(r[0])) for r in rows), default=8)
         for r in rows:
-            v = f"{r[1]:,.2f}" if isinstance(r[1], float) else str(r[1])
-            print(f'   {str(r[0]):<{width}}  {v:>14}')
+            print(f'   {str(r[0]):<{width}}  {query.format_value(r[1]):>14}')
     else:
         v = rows[0][0] if rows else None
-        v = f"{v:,.2f}" if isinstance(v, float) else str(v)
-        print(f'   {m["label"]} = {v}  [{m["unit"]}]')
+        print(f'   {m["label"]} = {query.format_value(v)}  [{m["unit"]}]')
 
 
 def main(argv=None) -> int:

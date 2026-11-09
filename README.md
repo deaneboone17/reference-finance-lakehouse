@@ -122,7 +122,7 @@ pip install -r requirements.txt
 by hand:
 
 ```bash
-# offline unit tests for the planner and validator
+# offline unit tests for the planner, validator and registry CLI
 python -m unittest discover -s ai_query/tests -t .
 
 # generate the four synthetic source extracts into data/raw/
